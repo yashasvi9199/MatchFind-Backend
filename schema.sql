@@ -1,89 +1,48 @@
--- Existing profiles table (ensure idempotency)
-create table if not exists public.profiles (
-  id uuid references auth.users(id) on delete cascade not null primary key,
-  email text,
-  
-  -- Basic Info
-  title text,
-  name text,
-  gender text,
-  age int,
-  height text,
-  weight text,
-  "skinColor" text,
-  "bloodGroup" text,
-  diet text,
-  bio text,
+-- -----------------------------------------------------------------------------
+-- Schema Migration: Improvements & Optimization
+-- Run this in Supabase SQL Editor to update the existing structure.
+-- -----------------------------------------------------------------------------
 
-  -- Social & Religious
-  caste text,
-  gotra text,
+-- 1. Performance Indices
+-- Based on RishteyView filters (caste, gotra, gender, etc.)
+create index if not exists idx_profiles_caste on public.profiles("caste");
+create index if not exists idx_profiles_gotra on public.profiles("gotra");
+create index if not exists idx_profiles_gender on public.profiles("gender");
 
-  -- Location & Birth
-  "birthPlace" text,
-  "birthTime" text,
+-- Based on MatchView (interactions querying)
+create index if not exists idx_interactions_from_type on public.interactions("fromUserId", "type");
+create index if not exists idx_interactions_to_type on public.interactions("toUserId", "type");
 
-  -- Native Location
-  "nativeCountry" text,
-  "nativeState" text,
-  "nativeCity" text,
+-- 2. Constraints (Data Integrity)
+-- Ensure unique emails in profiles if they are used for lookups
+alter table public.profiles 
+  add constraint IF NOT EXISTS profiles_email_key unique ("email");
 
-  -- Current Location
-  "currentCountry" text,
-  "currentState" text,
-  "currentCity" text,
+-- 3. Views for Easier Querying
+-- Helper view to find mutual matches (both users liked each other)
+create or replace view public.matches as
+select 
+  i1."fromUserId" as "user1",
+  i1."toUserId" as "user2",
+  greatest(i1.created_at, i2.created_at) as "matched_at"
+from interactions i1
+join interactions i2 
+  on i1."fromUserId" = i2."toUserId" 
+  and i1."toUserId" = i2."fromUserId"
+where i1.type = 'INTERESTED' 
+  and i2.type = 'INTERESTED';
 
-  -- Education & Career
-  "educationLevel" text,
-  "educationStream" text,
-  "educationDegree" text,
-  education text,
-  occupation text,
-  salary text,
+-- 4. Triggers (Auto-update updated_at)
+create or replace function public.handle_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
 
-  -- Family Details
-  father jsonb,
-  mother jsonb,
-  "paternalSide" jsonb,
-  siblings jsonb,
-
-  -- Health
-  "healthIssues" text[],
-
-  -- Preferences
-  "partnerAgeMin" text,
-  "partnerAgeMax" text,
-  expectations text[],
-
-  is_demo boolean default false,
-  updated_at timestamp with time zone,
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
-
--- Interactions Table
-create table if not exists public.interactions (
-  id uuid default gen_random_uuid() primary key,
-  "fromUserId" uuid references auth.users(id) on delete cascade not null,
-  "toUserId" uuid references auth.users(id) on delete cascade not null,
-  type text check (type in ('INTERESTED', 'REMOVED')),
-  timestamp bigint, -- storing JS timestamp for compatibility
-  created_at timestamp with time zone default timezone('utc'::text, now()),
-  unique("fromUserId", "toUserId")
-);
-
--- RLS
-alter table public.profiles enable row level security;
-alter table public.interactions enable row level security;
-
--- Policies
-create policy "Public profiles are viewable by everyone" on profiles for select using ( true );
-create policy "Users can insert their own profile" on profiles for insert with check ( auth.uid() = id );
-create policy "Users can update own profile" on profiles for update using ( auth.uid() = id );
-
-create policy "Users can view their own sent interactions" on interactions for select using ( auth.uid() = "fromUserId" );
-create policy "Users can insert their own interactions" on interactions for insert with check ( auth.uid() = "fromUserId" );
-
--- Storage
-insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true) on conflict (id) do nothing;
-create policy "Avatar images are publicly accessible" on storage.objects for select using ( bucket_id = 'avatars' );
-create policy "Anyone can upload an avatar" on storage.objects for insert with check ( bucket_id = 'avatars' );
+drop trigger if exists on_profile_updated on public.profiles;
+create trigger on_profile_updated
+  before update on public.profiles
+  for each row
+  execute procedure public.handle_updated_at();

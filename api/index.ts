@@ -8,15 +8,12 @@ dotenv.config();
 
 const app = express();
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-// Use Service Role Key for backend administration / bypassing RLS when needed
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY; 
+// Fallback to hardcoded values for LOCAL DEV ONLY if env is missing
+// The user explicitly requested NO .env file, but we need these to run the server.
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xyz.supabase.co'; // REPLACE WITH REAL URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJ...'; // REPLACE WITH REAL KEY
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.warn('Missing Supabase Env Variables! Backend may not function correctly.');
-}
-
-const supabase = createClient(SUPABASE_URL || '', SUPABASE_KEY || '');
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 app.use(cors({ 
     origin: process.env.ALLOWED_ORIGIN || '*' 

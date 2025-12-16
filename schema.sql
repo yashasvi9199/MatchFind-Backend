@@ -15,8 +15,9 @@ create index if not exists idx_interactions_to_type on public.interactions("toUs
 
 -- 2. Constraints (Data Integrity)
 -- Ensure unique emails in profiles if they are used for lookups
-alter table public.profiles 
-  add constraint IF NOT EXISTS profiles_email_key unique ("email");
+-- Postgres does not support "ADD CONSTRAINT IF NOT EXISTS", so we drop it first to be safe (idempotent)
+alter table public.profiles drop constraint if exists profiles_email_key;
+alter table public.profiles add constraint profiles_email_key unique ("email");
 
 -- 3. Views for Easier Querying
 -- Helper view to find mutual matches (both users liked each other)

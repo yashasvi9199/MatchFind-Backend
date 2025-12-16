@@ -15,8 +15,23 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const allowedOrigins = [process.env.ALLOWED_ORIGIN || '*'];
+
+if (process.env.LOCALHOST === 'true') {
+    allowedOrigins.push('http://localhost:3000');
+    allowedOrigins.push('http://localhost:5173');
+}
+
 app.use(cors({ 
-    origin: process.env.ALLOWED_ORIGIN || '*' 
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            callback(null, true);
+        } else {
+             // For safety in production, we might want to be strict. 
+             // But if allowed is *, it's open.
+             callback(new Error('Not allowed by CORS'));
+        }
+    }
 }));
 app.use(express.json());
 

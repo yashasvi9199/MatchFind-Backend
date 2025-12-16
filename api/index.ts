@@ -109,8 +109,9 @@ app.post('/api/seed', async (req, res) => {
         }
 
         res.json({ message: 'Seeding completed', success: successCount, errors });
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
+    } catch (e) {
+        const message = e instanceof Error ? e.message : 'Unknown error during seeding';
+        res.status(500).json({ error: message });
     }
 });
 

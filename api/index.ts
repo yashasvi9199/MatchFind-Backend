@@ -121,7 +121,14 @@ app.get('/api/matches/potential', async (req, res) => {
     const { userId, gender } = req.query;
     if (!userId || !gender) return res.status(400).json({ error: 'userId and gender required' });
 
-    const targetGender = gender === 'Male' ? 'Female' : 'Male';
+    // Check role of the requester
+    const { data: requester } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+    
+    const isAdmin = requester?.role === 'admin';
 
     // Get IDs user has already interacted with
     const { data: interactions } = await supabase
@@ -132,10 +139,15 @@ app.get('/api/matches/potential', async (req, res) => {
     const ignoredIds = interactions?.map(i => i.toUserId) || [];
     ignoredIds.push(userId as string); // Exclude self
 
-    const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('gender', targetGender);
+    let query = supabase.from('profiles').select('*');
+
+    // If NOT admin, filter by opposite gender
+    if (!isAdmin) {
+        const targetGender = gender === 'Male' ? 'Female' : 'Male';
+        query = query.eq('gender', targetGender);
+    }
+    
+    const { data: profiles, error } = await query;
     
     if (error) return res.status(500).json({ error: error.message });
 

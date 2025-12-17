@@ -33,7 +33,54 @@ join interactions i2
 where i1.type = 'INTERESTED' 
   and i2.type = 'INTERESTED';
 
--- 4. Triggers (Auto-update updated_at)
+-- 4. Role Management
+-- Add 'role' column (user/admin)
+alter table public.profiles 
+add column if not exists "role" text default 'user' check (role in ('user', 'admin'));
+
+-- 5. Row Level Security (RLS) for Admin
+-- Enable RLS if not already enabled
+alter table public.profiles enable row level security;
+
+-- Policy: Admins can do anything
+create policy "Admins can select all" 
+on public.profiles for select 
+using (
+  auth.uid() in (select id from public.profiles where role = 'admin')
+);
+
+create policy "Admins can update all" 
+on public.profiles for update 
+using (
+  auth.uid() in (select id from public.profiles where role = 'admin')
+);
+
+create policy "Admins can delete all" 
+on public.profiles for delete 
+using (
+  auth.uid() in (select id from public.profiles where role = 'admin')
+);
+
+-- Policy: Users see others (public profiles) - Assuming 'authenticated' role
+create policy "Users can see all public profiles"
+on public.profiles for select
+to authenticated
+using (true);
+
+-- Policy: Users can update own profile
+create policy "Users can update own profile"
+on public.profiles for update
+to authenticated
+using (auth.uid() = id);
+
+-- Policy: Users can insert own profile
+create policy "Users can insert own profile"
+on public.profiles for insert
+to authenticated
+with check (auth.uid() = id);
+
+
+-- 6. Triggers (Auto-update updated_at)
 create or replace function public.handle_updated_at()
 returns trigger as $$
 begin

@@ -23,15 +23,7 @@ if (process.env.LOCALHOST === 'true') {
 }
 
 app.use(cors({ 
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-            callback(null, true);
-        } else {
-             // For safety in production, we might want to be strict. 
-             // But if allowed is *, it's open.
-             callback(new Error('Not allowed by CORS'));
-        }
-    }
+    origin: true,
 }));
 app.use(express.json());
 

@@ -94,3 +94,8 @@ create trigger on_profile_updated
   before update on public.profiles
   for each row
   execute procedure public.handle_updated_at();
+
+-- 7. Profile Completion Tracking
+alter table public.profiles
+add column if not exists "is_complete_profile" boolean default false;
+

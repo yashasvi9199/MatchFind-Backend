@@ -144,7 +144,7 @@ app.get('/api/matches/potential', async (req, res) => {
     // If NOT admin, filter by opposite gender
     if (!isAdmin) {
         const targetGender = gender === 'Male' ? 'Female' : 'Male';
-        query = query.eq('gender', targetGender);
+        query = query.eq('gender', targetGender).neq('role', 'admin');
     }
     
     const { data: profiles, error } = await query;

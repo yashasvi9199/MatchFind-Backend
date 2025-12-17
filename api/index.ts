@@ -133,17 +133,18 @@ app.get('/api/matches/potential', async (req, res) => {
 
     let query = supabase.from('profiles').select('*');
 
-    // If NOT admin, filter by opposite gender
+    // If NOT admin, filter by opposite gender AND exclude admin profiles
     if (!isAdmin) {
         const targetGender = gender === 'Male' ? 'Female' : 'Male';
         query = query.eq('gender', targetGender).neq('role', 'admin');
     }
+    // Admin sees ALL profiles (no gender filter, no role filter)
     
     const { data: profiles, error } = await query;
     
     if (error) return res.status(500).json({ error: error.message });
 
-    // Filter in memory (or could do 'not.in' in SQL)
+    // Filter out already-interacted and self
     const filtered = profiles.filter(p => !ignoredIds.includes(p.id));
     res.json(filtered);
 });

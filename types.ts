@@ -32,6 +32,11 @@ export interface ProfileData {
   educationDegree: string;
   education: string;
   occupation: string;
+  occupation_type?: 'Job' | 'Business';
+  company_name?: string;
+  designation?: string;
+  business_name?: string;
+  business_category?: string;
   salary: string;
   father: FamilyMember;
   mother: FamilyMember;

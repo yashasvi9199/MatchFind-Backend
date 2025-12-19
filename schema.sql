@@ -99,3 +99,40 @@ create trigger on_profile_updated
 alter table public.profiles
 add column if not exists "is_complete_profile" boolean default false;
 
+-- -----------------------------------------------------------------------------
+-- Schema Migration: Occupation/Business Restructure
+-- Run this in Supabase SQL Editor
+-- -----------------------------------------------------------------------------
+
+-- 1. Add new occupation-related columns
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS "occupation_type" text CHECK (occupation_type IN ('Job', 'Business'));
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS "company_name" text;
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS "designation" text;
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS "business_name" text;
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS "business_category" text;
+
+-- 2. Migrate existing occupation data to occupation_type (optional - based on existing data patterns)
+-- This is a best-effort migration; manual review may be needed
+-- UPDATE public.profiles
+-- SET occupation_type = 'Job'
+-- WHERE occupation IS NOT NULL AND occupation != '';
+
+-- 3. (Optional) Drop old occupation column if no longer needed
+-- run 2 first for migration to prevent data loss
+-- ALTER TABLE public.profiles DROP COLUMN IF EXISTS "occupation";
+
+-- 4. Add index for occupation_type for filtering
+CREATE INDEX IF NOT EXISTS idx_profiles_occupation_type ON public.profiles("occupation_type");
+
+-- 5. Add "Computer Science" to educationStream (handled in frontend dropdown - no DB change needed)
+
+-- 6. Ensure salary column rename logic for Business as "Annual Turnover" (frontend label change - no DB change)

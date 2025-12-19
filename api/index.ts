@@ -245,4 +245,26 @@ app.get('/api/matches/mutual', async (req, res) => {
     res.json(profiles || []);
 });
 
+// Get "Rejected" profiles
+app.get('/api/matches/rejected', async (req, res) => {
+    const { userId } = req.query;
+    
+    // Get IDs user rejected (REMOVED)
+    const { data: interactions } = await supabase
+        .from('interactions')
+        .select('toUserId')
+        .eq('fromUserId', userId)
+        .eq('type', 'REMOVED');
+
+    const rejectedIds = interactions?.map(i => i.toUserId) || [];
+    if (rejectedIds.length === 0) return res.json([]);
+
+    const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', rejectedIds);
+
+    res.json(profiles || []);
+});
+
 export default app;
